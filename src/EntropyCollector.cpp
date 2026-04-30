@@ -7,7 +7,7 @@ void EntropyCollector::feed(const uint8_t *samples, uint32_t count) {
   for (size_t i = 0; i < count; i++) {
     uint8_t sample = samples[i] & 0x07;
 
-    _counts[sample]++;
+    _counts[samples[i]]++;
     _totalSamples++;
 
     _bitBuffer |= (static_cast<uint64_t>(sample) << _collectedBits);
@@ -20,18 +20,37 @@ void EntropyCollector::feed(const uint8_t *samples, uint32_t count) {
   }
 }
 
+double EntropyCollector::calculateEntropy() const {
+  double entropy = 0.0;
+  if (_totalSamples == 0)
+    return 0.0;
+
+  for (uint64_t count : _counts) {
+    if (count > 0) {
+      double p = static_cast<double>(count) / _totalSamples;
+      entropy -= p * std::log2(p);
+    }
+  }
+  return entropy;
+}
+
 void EntropyCollector::displayHistogram() {
   std::lock_guard<std::mutex> lock(_mutex);
   if (_totalSamples == 0)
     return;
 
-  std::print("\033[H\033[J");
-  std::println("Histogram 3-bitowych paczek (000 - 111):");
-  std::println("Przetworzonych próbek: {}\n", _totalSamples);
+  double entropy = calculateEntropy();
 
-  for (int i = 0; i < 8; ++i) {
+  std::print("\033[H\033[J");
+  std::println("Przetworzonych próbek: {}", _totalSamples);
+  std::println("Entropia: {:.4f} bitów na paczkę (Max: 8.0000)\n", entropy);
+
+  for (int i = 0; i < _counts.size(); ++i) {
     double percentage = (double)_counts[i] / _totalSamples * 100.0;
     int barWidth = static_cast<int>(percentage);
+
+    if (percentage < 1)
+      continue;
 
     std::print("{:03b} ({}) | ", i, i);
     for (int k = 0; k < barWidth; ++k)

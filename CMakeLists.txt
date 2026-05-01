@@ -18,7 +18,7 @@ target_include_directories(audio_rng PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Libraries
 find_package(Threads REQUIRED)
-target_link_libraries(audio_rng PRIVATE Threads::Threads m)
+target_link_libraries(audio_rng PRIVATE Threads::Threads m stdc++exp)
 
 if(WIN32)
     target_link_libraries(audio_rng PRIVATE winmm ole32 user32 advapi32)

@@ -15,6 +15,7 @@ void EntropyCollector::feed(const int16_t *samples, uint32_t count)
       uint8_t bit = (_currentSample >> b) & 1;
       _octet = (_octet << 1) | bit;
       _bitCounter++;
+
       if (_bitCounter == 8)
       {
         _pool.push_back(_octet);
@@ -63,7 +64,7 @@ void EntropyCollector::displayHistogram()
     double percentage = (double)_counts[i] / _totalSamples * 100.0;
     int barWidth = static_cast<int>(percentage);
 
-    if (percentage < 1)
+    if (percentage < 0.01)
       continue;
 
     std::print("{:03b} ({}) | ", i, i);

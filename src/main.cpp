@@ -4,6 +4,8 @@
 #include <iostream>
 #include <print>
 #include <thread>
+#include <fstream>
+#include <string>
 
 void data_callback(ma_device *pDevice, void *pOutput, const void *pInput,
                    ma_uint32 frameCount)
@@ -47,17 +49,58 @@ int main()
     return EXIT_FAILURE;
   }
 
+  std::cout << "How many samples to capture: ";
+  uint64_t sampleLimit;
+  if (!(std::cin >> sampleLimit))
+  {
+    std::cerr << "Invalid sample limit" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  std::ofstream outputFile("entropy_data.csv");
+  if (!outputFile)
+  {
+    std::cerr << "Could not open output file" << std::endl;
+    return EXIT_FAILURE;
+  }
+
   if (audio.startCapture(data_callback, &collector, deviceNum) != MA_SUCCESS)
   {
     std::cerr << "Couldn't start capture" << std::endl;
     return EXIT_FAILURE;
   }
 
-  while (true)
+  uint64_t totalBytesSaved = 0;
+  uint64_t bytes_Skipped = 0;
+  const uint64_t threshold = 10000;
+
+  while (totalBytesSaved < sampleLimit)
   {
-    collector.extract();
-    collector.displayHistogram();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    auto data = collector.extract();
+    if (!data.empty())
+    {
+
+      if (bytes_Skipped < threshold)
+      {
+        bytes_Skipped += data.size();
+        continue;
+      }
+
+      size_t bytesToWrite = data.size();
+
+      if (totalBytesSaved + bytesToWrite > sampleLimit)
+      {
+        bytesToWrite = sampleLimit - totalBytesSaved;
+      }
+      for (size_t i = 0; i < bytesToWrite; ++i)
+      {
+        outputFile << static_cast<int>(data[i]) << "\n";
+      }
+      outputFile.flush();
+      totalBytesSaved += bytesToWrite;
+    }
+    collector.displayHistogram();
   }
 
   return EXIT_SUCCESS;

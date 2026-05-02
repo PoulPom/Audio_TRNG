@@ -1,5 +1,6 @@
 #include "Audio.hpp"
 #include "EntropyCollector.hpp"
+#include "Hyperchaos.hpp"
 #include <chrono>
 #include <iostream>
 #include <print>
@@ -21,6 +22,7 @@ int main()
 {
   Audio audio;
   EntropyCollector collector;
+  Hyperchaos hyperchaos;
 
   if (audio.init() != MA_SUCCESS)
   {
@@ -57,8 +59,14 @@ int main()
     return EXIT_FAILURE;
   }
 
-  std::ofstream outputFile("entropy_data.csv");
-  if (!outputFile)
+  std::ofstream outputFileRaw("entropy_data.csv");
+  std::ofstream outputFileProcessed("processed_entropy_data.csv");
+  if (!outputFileRaw)
+  {
+    std::cerr << "Could not open output file" << std::endl;
+    return EXIT_FAILURE;
+  }
+  if (!outputFileProcessed)
   {
     std::cerr << "Could not open output file" << std::endl;
     return EXIT_FAILURE;
@@ -73,11 +81,14 @@ int main()
   uint64_t totalBytesSaved = 0;
   uint64_t bytes_Skipped = 0;
   const uint64_t threshold = 10000;
+  std::array<uint8_t, 8> hyperBuffer{};
+  size_t hyperBufferCount = 0;
 
   while (totalBytesSaved < sampleLimit)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     auto data = collector.extract();
+
     if (!data.empty())
     {
 
@@ -93,11 +104,27 @@ int main()
       {
         bytesToWrite = sampleLimit - totalBytesSaved;
       }
+
       for (size_t i = 0; i < bytesToWrite; ++i)
       {
-        outputFile << static_cast<int>(data[i]) << "\n";
+        outputFileRaw << static_cast<int>(data[i]) << "\n";
+        hyperBuffer[hyperBufferCount] = data[i];
+        hyperBufferCount++;
       }
-      outputFile.flush();
+
+      if (hyperBufferCount == 8)
+      {
+        auto hyperResult = hyperchaos.processBatch(hyperBuffer);
+        for (size_t i = 0; i < hyperResult.size(); ++i)
+        {
+          outputFileProcessed << static_cast<int>(hyperResult[i]) << "\n";
+        }
+        hyperBufferCount = 0; // Reset the buffer count
+      }
+
+      outputFileRaw.flush();
+      outputFileProcessed.flush();
+
       totalBytesSaved += bytesToWrite;
     }
     collector.displayHistogram();

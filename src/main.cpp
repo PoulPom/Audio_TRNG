@@ -59,8 +59,8 @@ int main()
     return EXIT_FAILURE;
   }
 
-  std::ofstream outputFileRaw("entropy_data.csv");
-  std::ofstream outputFileProcessed("processed_entropy_data.csv");
+  std::ofstream outputFileRaw("entropy_data.csv", std::ios::app);
+  std::ofstream outputFileProcessed("processed_entropy_data.csv", std::ios::app);
   if (!outputFileRaw)
   {
     std::cerr << "Could not open output file" << std::endl;
@@ -108,18 +108,20 @@ int main()
       for (size_t i = 0; i < bytesToWrite; ++i)
       {
         outputFileRaw << static_cast<int>(data[i]) << "\n";
+
         hyperBuffer[hyperBufferCount] = data[i];
         hyperBufferCount++;
-      }
 
-      if (hyperBufferCount == 8)
-      {
-        auto hyperResult = hyperchaos.processBatch(hyperBuffer);
-        for (size_t i = 0; i < hyperResult.size(); ++i)
+        if (hyperBufferCount == 8)
         {
-          outputFileProcessed << static_cast<int>(hyperResult[i]) << "\n";
+          auto hyperResult = hyperchaos.processBatch(hyperBuffer);
+
+          for (size_t i = 0; i < hyperResult.size(); ++i)
+          {
+            outputFileProcessed << static_cast<int>(hyperResult[i]) << "\n";
+          }
+          hyperBufferCount = 0; // Reset the buffer count
         }
-        hyperBufferCount = 0; // Reset the buffer count
       }
 
       outputFileRaw.flush();

@@ -11,6 +11,7 @@ add_executable(audio_rng
     src/main.cpp 
     src/Audio.cpp 
     src/EntropyCollector.cpp
+    src/Hyperchaos.cpp
     ${MINIAUDIO_SRC}
 )
 
